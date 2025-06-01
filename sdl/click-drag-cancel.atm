@@ -31,56 +31,63 @@ val REN = try_sdl(SDL.createRenderer, WIN, -1)
 val sfc = try_sdl(IMG.load, "Lua-SDL2.png")
 val tex = try_sdl(REN.createTextureFromSurface, REN, sfc)
 
-loop in 10 {
-    REN.setDrawColor(REN, 0x000000)
-	REN.clear(REN)
-    REN.setDrawColor(REN, 0xFFFFFF)
-	;;REN.copy(REN, tex)
-    REN.fillRect(REN) <- [x=10, y=20, w=30, h=40]
-	REN.present(REN)
-	SDL.delay(100)
+;;pico-state-set-font("tiny.ttf", 10)
+
+func rect_vs_pos (r, p) {
+    set p.w = 1
+    set p.h = 1
+    SDL.hasIntersection(r, p)
 }
 
-;;;
-pico-state-set-font("tiny.ttf", 10)
-
-spawn task {
+spawn {
     var text = " "
-    var rect :Rect = [[0,0],[10,10]]
-    spawn task {
-        every :Pico.Draw {
-            pico-output-draw-rect(rect)
-            pico-output-draw-text([0,-20], text)
+    var rect = [x=0,y=0, w=10,h=10]
+    spawn {
+        every :Pico:Draw {
+            REN.setDrawColor(REN, 0x000000)
+            REN.clear(REN)
+            REN.setDrawColor(REN, 0xFFFFFF)
+            REN.fillRect(REN, rect)
+            ;;pico-output-draw-text([0,-20], text)
         }
     }
     loop {
-        val click :XY = await(:Pico.Mouse.Button.Dn => pico-point-vs-rect?(it.pos,rect)) {
-            copy(it.pos)
-        }
-        val orig :Rect = copy(rect)
+        val click = await(:Pico:Mouse:Button:Dn, rect_vs_pos(rect,evt))
+        val orig = copy(rect)
         set text = "... clicking ..."
-        par-or {
-            await(:Pico.Key.Dn => it.key==:Key-Escape)
+        par_or {
+            await(:Pico:Key:Dn, evt.key==:Key:Escape)
             set rect = copy(orig)
             set text = "!!! CANCELLED !!!"
         } with {
-            par-or {
-                await(:Pico.Mouse.Motion)
+            par_or {
+                await(:Pico:Mouse:Motion)
                 set text = "... dragging ..."
-                await(:Pico.Mouse.Button.Up)
+                await(:Pico:Mouse:Button:Up)
                 set text = "!!! DRAGGED !!!"
             } with {
-                every :Pico.Mouse.Motion {
-                    set rect.pos.x = orig.pos.x + (it.pos.x - click.x)
-                    set rect.pos.y = orig.pos.y + (it.pos.y - click.y)
+                every :Pico:Mouse:Motion {
+                    set rect.pos.x = orig.pos.x + (evt.pos.x - click.x)
+                    set rect.pos.y = orig.pos.y + (evt.pos.y - click.y)
                 }
             }
         } with {
-            await(:Pico.Mouse.Button.Up)
+            await(:Pico:Mouse:Button:Up)
             set text = "!!! CLICKED !!!"
         }
     }
 }
 
-pico-loop()
-;;;
+loop {
+	loop e in SDL.pollEvent {
+        dump(:e, e, e())
+		ifs {
+            (e.type == SDL.event.Quit)            => break()
+		    (e.type == SDL.event.KeyDown)         => emit(:Pico:Key:Down(e))
+		    (e.type == SDL.event.MouseButtonUp)   => emit(:Pico:Mouse:Button:Up(e))
+		    (e.type == SDL.event.MouseButtonDown) => emit(:Pico:Mouse:Button:Down(e))
+		    (e.type == SDL.event.MouseMotion)     => emit(:Pico:Mouse:Motion(e))
+		}
+	}
+    emit(:Pico:Draw)
+}
