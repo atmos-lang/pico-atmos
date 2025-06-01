@@ -1,0 +1,86 @@
+val SDL = require <- "SDL"
+val IMG = require <- "SDL.image"
+
+defer {
+    IMG.quit()
+    SDL.quit()
+}
+
+func try_sdl (f, ...) {
+	val t = [ f(...) ]
+	if !t[0] {
+		error(t[#t-1])
+	}
+	return (table.unpack(t))
+}
+
+val formats, ret, err = IMG.init <- [IMG.flags.PNG]
+if !formats[IMG.flags.PNG-1] {
+	error(err)
+}
+
+val WIN = try_sdl(SDL.createWindow, [
+	title	= "04 - Drawing image",
+	width	= 256,
+	height	= 256,
+        flags	= [ SDL.flags.OpenGL ],
+])
+
+val REN = try_sdl(SDL.createRenderer, WIN, -1)
+REN.setDrawColor(REN, 0xFFFFFF)
+
+val sfc = try_sdl(IMG.load, "Lua-SDL2.png")
+val tex = try_sdl(REN.createTextureFromSurface, REN, sfc)
+
+loop in 50 {
+	REN.clear(REN)
+	REN.copy(REN, tex)
+	REN.present(REN)
+	SDL.delay(100)
+}
+
+;;;
+pico-state-set-size([810,610])
+pico-state-set-title("pico-Ceu: Click, Drag, or Cancel")
+pico-state-set-font("tiny.ttf", 10)
+
+spawn task {
+    var text = " "
+    var rect :Rect = [[0,0],[10,10]]
+    spawn task {
+        every :Pico.Draw {
+            pico-output-draw-rect(rect)
+            pico-output-draw-text([0,-20], text)
+        }
+    }
+    loop {
+        val click :XY = await(:Pico.Mouse.Button.Dn => pico-point-vs-rect?(it.pos,rect)) {
+            copy(it.pos)
+        }
+        val orig :Rect = copy(rect)
+        set text = "... clicking ..."
+        par-or {
+            await(:Pico.Key.Dn => it.key==:Key-Escape)
+            set rect = copy(orig)
+            set text = "!!! CANCELLED !!!"
+        } with {
+            par-or {
+                await(:Pico.Mouse.Motion)
+                set text = "... dragging ..."
+                await(:Pico.Mouse.Button.Up)
+                set text = "!!! DRAGGED !!!"
+            } with {
+                every :Pico.Mouse.Motion {
+                    set rect.pos.x = orig.pos.x + (it.pos.x - click.x)
+                    set rect.pos.y = orig.pos.y + (it.pos.y - click.y)
+                }
+            }
+        } with {
+            await(:Pico.Mouse.Button.Up)
+            set text = "!!! CLICKED !!!"
+        }
+    }
+}
+
+pico-loop()
+;;;
