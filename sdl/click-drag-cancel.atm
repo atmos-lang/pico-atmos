@@ -82,15 +82,16 @@ spawn {
 
 loop {
 	val e = SDL.waitEvent(50)
-    ifs {
-        (e == nil) => {}
-        (e.type == SDL.event.Quit)            => break()
-        (e.type == SDL.event.MouseButtonUp)   => emit(:Pico.Mouse.Button.Up(e))
-        (e.type == SDL.event.MouseButtonDown) => emit(:Pico.Mouse.Button.Dn(e))
-        (e.type == SDL.event.MouseMotion)     => emit(:Pico.Mouse.Motion(e))
-        (e.type == SDL.event.KeyDown) => {
-            set e.name = SDL.getKeyName(e.keysym.sym)
-            emit(:Pico.Key.Dn(e))
+    if e != nil {
+        match e.type {
+            SDL.event.Quit            => break()
+            SDL.event.MouseButtonUp   => emit(:Pico.Mouse.Button.Up(e))
+            SDL.event.MouseButtonDown => emit(:Pico.Mouse.Button.Dn(e))
+            SDL.event.MouseMotion     => emit(:Pico.Mouse.Motion(e))
+            SDL.event.KeyDown => {
+                set e.name = SDL.getKeyName(e.keysym.sym)
+                emit(:Pico.Key.Dn(e))
+            }
         }
     }
     emit(:Pico.Draw)
