@@ -1,11 +1,10 @@
 ;;LUA_PATH="/x/atmos/src/?.lua;" lua5.4 /x/atmos/src/atmos.lua click-drag-cancel.atm
 
 val SDL = require "SDL"
-val IMG = require "SDL.image"
 val TTF = require "SDL.ttf"
 
 defer {
-    IMG.quit()
+    TTF.quit()
     SDL.quit()
 }
 
@@ -17,16 +16,11 @@ func try_sdl (f, ...) {
 	return (table.unpack(t))
 }
 
-val formats, ret, err = IMG.init @{IMG.flags.PNG}
-if !formats[IMG.flags.PNG] {
-	error(err)
-}
-
 val WIN = try_sdl(SDL.createWindow, @{
-	title	= "pico-lua: Click, Drag, Cancel",
-	width	= 256,
-	height	= 256,
-        flags	= @{ SDL.flags.OpenGL },
+	title  = "pico-lua: Click, Drag, Cancel",
+	width  = 256,
+	height = 256,
+    flags  = @{ SDL.flags.OpenGL },
 })
 val REN = try_sdl(SDL.createRenderer, WIN, -1)
 
