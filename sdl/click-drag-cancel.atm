@@ -1,5 +1,8 @@
-val SDL = require <- "SDL"
-val IMG = require <- "SDL.image"
+;;LUA_PATH="/x/atmos/src/?.lua;" lua5.4 /x/atmos/src/atmos.lua click-drag-cancel.atm
+
+val SDL = require "SDL"
+val IMG = require "SDL.image"
+val TTF = require "SDL.ttf"
 
 defer {
     IMG.quit()
@@ -14,7 +17,7 @@ func try_sdl (f, ...) {
 	return (table.unpack(t))
 }
 
-val formats, ret, err = IMG.init <- @{IMG.flags.PNG}
+val formats, ret, err = IMG.init @{IMG.flags.PNG}
 if !formats[IMG.flags.PNG] {
 	error(err)
 }
@@ -25,13 +28,10 @@ val WIN = try_sdl(SDL.createWindow, @{
 	height	= 256,
         flags	= @{ SDL.flags.OpenGL },
 })
-
 val REN = try_sdl(SDL.createRenderer, WIN, -1)
 
-val sfc = try_sdl(IMG.load, "Lua-SDL2.png")
-val tex = try_sdl(REN.createTextureFromSurface, REN, sfc)
-
-;;pico-state-set-font("tiny.ttf", 10)
+TTF.init() -> assert
+val FNT = TTF.open("DejaVuSans.ttf", 10) -> assert
 
 func rect_vs_mouse (r, m) {
     set m = copy(m)
@@ -40,8 +40,16 @@ func rect_vs_mouse (r, m) {
     SDL.hasIntersection(r, m)
 }
 
+func write (t, str) {
+    val sfc = FNT::renderUtf8(str, "blended", @{r=255,g=255,b=255}) -> assert
+    val tex = REN::createTextureFromSurface(sfc) -> assert
+    set t.str = str
+    set t.tex = tex
+}
+
 spawn {
-    var text = " "
+    var text = @{ str=" ", tex=nil }
+    text->write " "
     var rect = @{x=108,y=108, w=40,h=40}
     spawn {
         every :Pico.Draw {
@@ -49,24 +57,24 @@ spawn {
             REN::clear()
             REN::setDrawColor(0xFFFFFF)
             REN::fillRect(rect)
+            REN::copy(text.tex,nil, @{x=100,y=200,w=100,h=20})
             REN::present()
-            ;;pico-output-draw-text([0,-20], text)
         }
     }
     loop {
         val click = await(:Pico.Mouse.Button.Dn, rect_vs_mouse(rect,evt))
         val orig = copy(rect)
-        set text = "... clicking ..."
+        text->write "... clicking ..."
         par_or {
             await(:Pico.Key.Dn, evt.name==:Escape)
             set rect = copy(orig)
-            set text = "!!! CANCELLED !!!"
+            text->write "!!! CANCELLED !!!"
         } with {
             par_or {
                 await(:Pico.Mouse.Motion)
-                set text = "... dragging ..."
+                text->write "... dragging ..."
                 await(:Pico.Mouse.Button.Up)
-                set text = "!!! DRAGGED !!!"
+                text->write "!!! DRAGGED !!!"
             } with {
                 every :Pico.Mouse.Motion {
                     set rect.x = orig.x + (evt.x - click.x)
@@ -75,7 +83,7 @@ spawn {
             }
         } with {
             await(:Pico.Mouse.Button.Up)
-            set text = "!!! CLICKED !!!"
+            text->write "!!! CLICKED !!!"
         }
     }
 }
