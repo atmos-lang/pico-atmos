@@ -27,11 +27,11 @@ val REN = try_sdl(SDL.createRenderer, WIN, -1)
 TTF.init() -> assert
 val FNT = TTF.open("DejaVuSans.ttf", 10) -> assert
 
-func rect_vs_mouse (r, m) {
-    set m = copy(m)
-    set m.w = 1
-    set m.h = 1
-    SDL.hasIntersection(r, m)
+func rect_vs_pos (r, p) {
+    set p = copy(p)
+    set p.w = 1
+    set p.h = 1
+    SDL.hasIntersection(r, p)
 }
 
 func write (t, str) {
@@ -56,7 +56,7 @@ spawn {
         }
     }
     loop {
-        val click = await(:Pico.Mouse.Button.Dn, rect_vs_mouse(rect,evt))
+        val click = await(:Pico.Mouse.Button.Dn, rect_vs_pos(rect,evt))
         val orig = copy(rect)
         text->write "... clicking ..."
         par_or {
