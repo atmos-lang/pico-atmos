@@ -39,8 +39,8 @@ func Bird (y, speed) {
             set ang = ang + ((3.14*v)/100000)
             val tmp = math.floor(((ang+(3.14/2))/3.14))
             set img = match tmp % 2 {
-                0 => DN
-                1 => UP
+                0 => UP
+                1 => DN
             }
         }
     } with {
