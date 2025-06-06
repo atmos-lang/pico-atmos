@@ -124,7 +124,7 @@ spawn {
                 }
             } with {
                 loop {
-                    val bird =
+                    val bird = (
                         every :Pico.Mouse.Button.Dn {
                             until (
                                 loop b in birds {
@@ -132,6 +132,7 @@ spawn {
                                 }
                             )
                         }
+                    )
                     watching bird {
                         val pos = pico.pct-to-pos(0.5, 1)
                         every :Pico.Draw {
