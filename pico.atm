@@ -1,0 +1,80 @@
+val pico = @{}
+
+set SDL = require "SDL"
+set IMG = require "SDL.image"
+set TTF = require "SDL.ttf"
+
+TTF.init() -> assert
+
+defer {
+    TTF.quit()
+    IMG.quit()
+    SDL.quit()
+}
+
+func pico.write (fnt, str, rect) {
+    val sfc = fnt::renderUtf8(str, "blended", @{r=255,g=255,b=255}) -> assert
+    val tex = REN::createTextureFromSurface(sfc) -> assert
+    REN::copy(tex, nil, rect)
+}
+
+func pico.point_vs_rect (p, r) {
+    set p = copy(p)
+    set p.w = 1
+    set p.h = 1
+    SDL.hasIntersection(r, p)
+}
+
+func pico.pct_to_pos (x, y, r) {
+    set r = r || @{ x=w/2, y=h/2, w=w, h=h } where {
+        w = 640
+        h = 480
+    }
+    @{
+        x = (r.x-(r.w/2)) + ((r.w*x)/100) --> math.floor,
+        y = (r.y-(r.h/2)) + ((r.h*y)/100) --> math.floor,
+    };
+}
+
+var pico_quit = false
+func pico.quit () {
+    ;; TODO
+    ;;SDL_Event e = { SDL_QUIT };
+    ;;assert(1 == SDL_PushEvent(&e));
+    set pico_quit = true
+}
+
+func pico.main () {
+    val MS_PER_FRAME = 40
+    var old = SDL.getTicks() - MS_PER_FRAME
+    var ms = 0
+    loop {
+        until <- pico_quit
+        val e = SDL.waitEvent(ms)
+        if e == nil {
+            val cur = SDL.getTicks()
+            if (cur - old) >= MS_PER_FRAME {
+                set old = cur
+                emit(:clock, MS_PER_FRAME)
+                emit(:Pico.Frame, MS_PER_FRAME)
+            }
+        } else {
+            match e.type {
+                SDL.event.Quit            => break()
+                SDL.event.MouseButtonUp   => emit(:Pico.Mouse.Button.Up(e))
+                SDL.event.MouseButtonDown => emit(:Pico.Mouse.Button.Dn(e))
+                SDL.event.MouseMotion     => emit(:Pico.Mouse.Motion(e))
+                SDL.event.KeyDown => {
+                    set e.name = SDL.getKeyName(e.keysym.sym)
+                    emit(:Pico.Key.Dn(e))
+                }
+            }
+        }
+        REN::setDrawColor(0x000000)
+        REN::clear()
+        emit(:Pico.Draw)
+        REN::present()
+    }
+}
+
+return(pico)
