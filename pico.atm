@@ -12,10 +12,19 @@ defer {
     SDL.quit()
 }
 
-func pico.write (fnt, str, rect) {
+func pico.rect (pos, dim) {
+    @{
+        x = pos.x - (dim.w/2) --> math.floor,
+        y = pos.y - (dim.h/2) --> math.floor,
+        w = dim.w,
+        h = dim.h,
+    }
+}
+
+func pico.write (fnt, str, pos) {
     val sfc = fnt::renderUtf8(str, "blended", @{r=255,g=255,b=255}) -> assert
     val tex = REN::createTextureFromSurface(sfc) -> assert
-    REN::copy(tex, nil, rect)
+    REN::copy(tex, nil) <-- pico.rect(pos, totable('w','h',sfc::getSize()))
 }
 
 func pico.point_vs_rect (p, r) {
@@ -27,8 +36,7 @@ func pico.point_vs_rect (p, r) {
 
 func pico.pct_to_pos (x, y, r) {
     set r = r || @{ x=w/2, y=h/2, w=w, h=h } where {
-        w = 640
-        h = 480
+        w,h = WIN::getSize()
     }
     @{
         x = (r.x-(r.w/2)) + ((r.w*x)/100) --> math.floor,
